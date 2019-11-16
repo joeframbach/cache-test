@@ -9,11 +9,18 @@ const BURST = 10;
 const DELAY = 200;
 const now = typeof performance !== 'undefined' ? () => performance.now() : () => +new Date();
 
+function getFetchAs(url) {
+  const extension = url.split('?').shift().split('.').pop();
+  if (extension === "js") return "script";
+  if (extension === "css") return "style";
+  if (extension === "jpg") return "image";
+  return "fetch";  // includes json
+}
+
 const strategies = {
   fetch: url => {
     const t0 = now();
-    const extension = url.split('?').shift().split('.').pop();
-    const corsMode = (extension == 'js') ? 'cors' : 'no-cors';
+    const corsMode = (getFetchAs(url) === 'script') ? 'cors' : 'no-cors';
     return fetch(url, {mode: corsMode}).then(() => now() - t0);
   },
   xhr: url => new Promise(function(resolve) {
@@ -27,11 +34,13 @@ const strategies = {
   }),
   link: url => {
     return new Promise(function (resolve, reject) {
-      var loader = document.createElement("link");
+      const fetchAs = getFetchAs(url);
+      const loader = document.createElement("link");
       loader.rel = "preload";
-      loader.crossOrigin = "anonymous";
-      loader.as = "script";
-      loader.type = "application/javascript";
+      if (fetchAs === "script") {
+        loader.crossOrigin = "anonymous";
+      }
+      loader.as = fetchAs;
       loader.href = url;
       const t0 = now();
       loader.onload = () => resolve(now() - t0);
@@ -40,8 +49,8 @@ const strategies = {
     });
   },
   element: url => new Promise(function (resolve, reject) {
-    const extension = url.split('?').shift().split('.').pop();
-    if (extension === 'js') {
+    const fetchAs = getFetchAs(url);
+    if (fetchAs === 'script') {
       const loader = document.createElement("script");
       loader.type = "text/javascript";
       loader.crossOrigin = "anonymous";
@@ -52,7 +61,7 @@ const strategies = {
       }
       document.head.appendChild(loader);
     }
-    else if (extension === 'css') {
+    else if (fetchAs === 'style') {
       const loader = document.createElement("link");
       loader.type = 'text/css';
       loader.rel = 'stylesheet';
@@ -61,7 +70,7 @@ const strategies = {
       loader.onload = () => resolve(now() - t0);
       document.head.appendChild(loader);
     }
-    else if (extension === 'jpg') {
+    else if (fetchAs === 'image') {
       const loader = new Image();
       loader.style.display = "none";
       const t0 = now();
@@ -71,7 +80,7 @@ const strategies = {
       document.body.appendChild(loader);
     }
     else {
-      reject(`Unknown element for extension ${extension}`);
+      reject(`Unknown element for fetch type ${fetchAs}`);
     }
   })
 };
