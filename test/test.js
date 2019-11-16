@@ -12,7 +12,9 @@ const now = typeof performance !== 'undefined' ? () => performance.now() : () =>
 const strategies = {
   fetch: url => {
     const t0 = now();
-    return fetch(url, {mode: "cors"}).then(() => now() - t0);
+    const extension = url.split('?').shift().split('.').pop();
+    const corsMode = (extension == 'js') ? 'cors' : 'no-cors';
+    return fetch(url, {mode: corsMode}).then(() => now() - t0);
   },
   xhr: url => new Promise(function(resolve) {
     const request = new XMLHttpRequest();
